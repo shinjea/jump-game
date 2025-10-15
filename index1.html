@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Platform Jumper</title>
+<style>
+  body { margin:0; overflow:hidden; background:#87CEEB; font-family:sans-serif; }
+  canvas { display:block; margin:0 auto; background:#87CEEB; }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// 플레이어
+let player = { x:180, y:500, w:40, h:40, vy:0, onGround:false };
+let gravity = 0.8;
+let jumpStrength = -15;
+let score = 0;
+
+// 플랫폼 초기화
+let platforms = [{x:0, y:580, w:400, h:20}]; // 바닥
+
+for(let i=1; i<5; i++){ // 초반 5단계
+  platforms.push({
+    x: Math.random()*(canvas.width-80),
+    y: 580 - i*100,
+    w: 80,
+    h: 10
+  });
+}
+
+let keys = {};
+document.addEventListener('keydown', e=>{ keys[e.code]=true; });
+document.addEventListener('keyup', e=>{ keys[e.code]=false; });
+canvas.addEventListener('touchstart', ()=>{ if(player.onGround) player.vy = jumpStrength; });
+
+function update() {
+  // 좌우 이동
+  if(keys['ArrowLeft']) player.x -=5;
+  if(keys['ArrowRight']) player.x +=5;
+
+  // 중력 적용
+  player.vy += gravity;
+  player.y += player.vy;
+
+  player.onGround = false;
+
+  // 플랫폼 충돌
+  for(let p of platforms){
+    if(player.x + player.w > p.x && player.x < p.x + p.w &&
+       player.y + player.h > p.y && player.y + player.h < p.y + p.h + player.vy){
+      player.y = p.y - player.h;
+      player.vy = 0;
+      player.onGround = true;
+    }
+  }
+
+  // 점프
+  if((keys['Space'] || keys['ArrowUp']) && player.onGround){
+    player.vy = jumpStrength;
+  }
+
+  // 화면 밖 좌우 이동 막기
+  if(player.x < 0) player.x = 0;
+  if(player.x + player.w > canvas.width) player.x = canvas.width - player.w;
+
+  // 화면 위로 올라가면 카메라 이동 & 플랫폼 생성
+  if(player.y < 300){
+    let dy = 300 - player.y;
+    player.y = 300;
+    platforms.forEach(p => p.y += dy);
+    score += Math.floor(dy);
+    
+    // 새로운 플랫폼 추가
+    if(platforms[platforms.length-1].y > 0){
+      platforms.push({
+        x: Math.random()*(canvas.width-80),
+        y: platforms[platforms.length-1].y - 100,
+        w: 80,
+        h: 10
+      });
+    }
+  }
+
+  // 화면 아래로 내려간 플랫폼 제거
+  platforms = platforms.filter(p => p.y < canvas.height);
+
+  // 떨어지면 초기화
+  if(player.y > canvas.height){
+    player.y = 500;
+    player.vy = 0;
+    score = 0;
+    platforms = [{x:0, y:580, w:400, h:20}];
+    for(let i=1; i<5; i++){
+      platforms.push({
+        x: Math.random()*(canvas.width-80),
+        y: 580 - i*100,
+        w: 80,
+        h: 10
+      });
+    }
+  }
+}
+
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // 플레이어
+  ctx.fillStyle = '#FF4500';
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+
+  // 플랫폼
+  ctx.fillStyle = '#228B22';
+  platforms.forEach(p => ctx.fillRect(p.x, p.y, p.w, p.h));
+
+  // 점수
+  ctx.fillStyle = '#000';
+  ctx.font = '20px sans-serif';
+  ctx.fillText("점수: "+score, 10, 30);
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
